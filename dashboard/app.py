@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import duckdb
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -34,9 +35,190 @@ BRAND_ORANGE = "#FF6B35"
 COLOR_SEQ = [BRAND_BLUE, BRAND_GREEN, BRAND_ORANGE, "#9B59B6", "#E74C3C",
              "#F39C12", "#1ABC9C", "#3498DB"]
 
-# Resolve DuckDB path relative to this file's location
+# Use /tmp for Streamlit Cloud compatibility; fall back to local dbt output
 _PROJECT_ROOT = Path(__file__).parent.parent
-_DB_PATH = str(_PROJECT_ROOT / "dbt_project" / "dev.duckdb")
+_DBT_DB_PATH  = _PROJECT_ROOT / "dbt_project" / "dev.duckdb"
+_TMP_DB_PATH  = Path("/tmp/travel_analytics.duckdb")
+_DB_PATH      = str(_DBT_DB_PATH) if _DBT_DB_PATH.exists() else str(_TMP_DB_PATH)
+
+
+# ---------------------------------------------------------------------------
+# Fallback: build mart tables directly when dbt hasn't been run
+# ---------------------------------------------------------------------------
+
+def _build_fallback_db(db_path: str) -> None:
+    """Generate synthetic data and create mart tables in DuckDB without dbt."""
+
+    rng = np.random.default_rng(42)
+
+    # ── companies ────────────────────────────────────────────────────────────
+    n_companies = 50
+    size_tiers  = ["SMB", "Mid-Market", "Enterprise"]
+    industries  = ["Technology", "Finance", "Healthcare", "Retail", "Manufacturing",
+                   "Media", "Education", "Travel", "Legal", "Consulting"]
+    countries   = ["Spain", "Germany", "UK", "France", "Netherlands"]
+
+    companies = pd.DataFrame({
+        "company_id":       [f"C{i:04d}" for i in range(1, n_companies + 1)],
+        "company_name":     [f"Company {i}" for i in range(1, n_companies + 1)],
+        "industry":         rng.choice(industries, n_companies),
+        "size_tier":        rng.choice(size_tiers, n_companies, p=[0.5, 0.35, 0.15]),
+        "country":          rng.choice(countries, n_companies),
+        "contract_start":   pd.to_datetime(
+            rng.integers(
+                pd.Timestamp("2020-01-01").value // 10**9,
+                pd.Timestamp("2023-12-31").value // 10**9,
+                n_companies
+            ), unit="s"
+        ).normalize(),
+    })
+    companies["monthly_mrr_eur"] = np.where(
+        companies["size_tier"] == "Enterprise", rng.integers(15000, 50000, n_companies),
+        np.where(companies["size_tier"] == "Mid-Market",
+                 rng.integers(3000, 15000, n_companies),
+                 rng.integers(300, 3000, n_companies))
+    )
+
+    # ── employees ────────────────────────────────────────────────────────────
+    n_employees  = 500
+    departments  = ["Engineering", "Sales", "Marketing", "Finance", "HR",
+                    "Operations", "Legal", "Product"]
+    seniorities  = ["junior", "mid", "senior", "manager", "director"]
+
+    employees = pd.DataFrame({
+        "employee_id":  [f"E{i:05d}" for i in range(1, n_employees + 1)],
+        "company_id":   rng.choice(companies["company_id"], n_employees),
+        "department":   rng.choice(departments, n_employees),
+        "seniority":    rng.choice(seniorities, n_employees, p=[0.25, 0.30, 0.25, 0.15, 0.05]),
+        "country":      rng.choice(countries, n_employees),
+        "start_date":   pd.to_datetime(
+            rng.integers(
+                pd.Timestamp("2018-01-01").value // 10**9,
+                pd.Timestamp("2024-01-01").value // 10**9,
+                n_employees
+            ), unit="s"
+        ).normalize(),
+        "is_active":    rng.choice([True, False], n_employees, p=[0.9, 0.1]),
+    })
+
+    # ── bookings ─────────────────────────────────────────────────────────────
+    n_bookings  = 5000
+    trip_types  = ["flight", "hotel", "train", "car_rental"]
+    currencies  = ["EUR", "GBP", "USD"]
+    statuses_b  = ["confirmed", "cancelled", "pending"]
+    cities      = ["London", "Paris", "Berlin", "Madrid", "Amsterdam",
+                   "Barcelona", "Rome", "Vienna", "Zurich", "Brussels"]
+
+    booking_dates = pd.to_datetime(
+        rng.integers(
+            pd.Timestamp("2024-01-01").value // 10**9,
+            pd.Timestamp("2025-12-31").value // 10**9,
+            n_bookings
+        ), unit="s"
+    ).normalize()
+
+    advance_days = rng.integers(0, 60, n_bookings)
+
+    bookings_raw = pd.DataFrame({
+        "booking_id":           [f"B{i:06d}" for i in range(1, n_bookings + 1)],
+        "employee_id":          rng.choice(employees["employee_id"], n_bookings),
+        "booking_date":         booking_dates,
+        "trip_type":            rng.choice(trip_types, n_bookings, p=[0.5, 0.25, 0.15, 0.10]),
+        "destination_city":     rng.choice(cities, n_bookings),
+        "destination_country":  rng.choice(countries, n_bookings),
+        "amount_cents":         rng.integers(5000, 200000, n_bookings),
+        "currency":             rng.choice(currencies, n_bookings, p=[0.6, 0.25, 0.15]),
+        "status":               rng.choice(statuses_b, n_bookings, p=[0.75, 0.15, 0.10]),
+        "advance_days":         advance_days,
+        "policy_compliant":     rng.choice([True, False], n_bookings, p=[0.82, 0.18]),
+    })
+
+    # ── expenses ─────────────────────────────────────────────────────────────
+    n_expenses  = 8000
+    exp_cats    = ["Meals", "Transport", "Accommodation", "Office Supplies",
+                   "Entertainment", "Training", "Other"]
+    statuses_e  = ["approved", "rejected", "pending"]
+
+    expense_dates = pd.to_datetime(
+        rng.integers(
+            pd.Timestamp("2024-01-01").value // 10**9,
+            pd.Timestamp("2025-12-31").value // 10**9,
+            n_expenses
+        ), unit="s"
+    ).normalize()
+
+    expenses_raw = pd.DataFrame({
+        "expense_id":       [f"X{i:07d}" for i in range(1, n_expenses + 1)],
+        "employee_id":      rng.choice(employees["employee_id"], n_expenses),
+        "expense_date":     expense_dates,
+        "category":         rng.choice(exp_cats, n_expenses),
+        "amount_cents":     rng.integers(500, 50000, n_expenses),
+        "currency":         rng.choice(currencies, n_expenses, p=[0.65, 0.20, 0.15]),
+        "status":           rng.choice(statuses_e, n_expenses, p=[0.70, 0.10, 0.20]),
+        "receipt_attached": rng.choice([True, False], n_expenses, p=[0.78, 0.22]),
+        "policy_compliant": rng.choice([True, False], n_expenses, p=[0.80, 0.20]),
+    })
+
+    # ── build mart tables in DuckDB ───────────────────────────────────────────
+    fx = {"EUR": 1.0, "GBP": 1.17, "USD": 0.92}
+
+    def cost_eur(df):
+        return df["amount_cents"] / 100 * df["currency"].map(fx)
+
+    # fct_bookings
+    fct_b = (bookings_raw
+        .merge(employees[["employee_id", "company_id", "department", "seniority", "country"]]
+               .rename(columns={"country": "employee_country"}), on="employee_id", how="left")
+        .merge(companies[["company_id", "company_name", "industry", "size_tier"]], on="company_id", how="left")
+    )
+    fct_b["travel_date"]   = fct_b["booking_date"] + pd.to_timedelta(fct_b["advance_days"], unit="d")
+    fct_b["booking_month"] = fct_b["booking_date"].dt.to_period("M").dt.to_timestamp()
+    fct_b["cost_eur"]      = cost_eur(fct_b)
+    fct_b["is_cancelled"]  = fct_b["status"] == "cancelled"
+    fct_b["is_policy_compliant"] = fct_b["policy_compliant"]
+    fct_b["advance_booking_tier"] = pd.cut(
+        fct_b["advance_days"], bins=[-1, 2, 14, 999],
+        labels=["last_minute", "standard", "advance"]
+    ).astype(str)
+
+    # fct_expenses
+    fct_e = (expenses_raw
+        .merge(employees[["employee_id", "company_id", "department", "seniority", "country"]]
+               .rename(columns={"country": "employee_country"}), on="employee_id", how="left")
+        .merge(companies[["company_id", "company_name", "industry", "size_tier"]], on="company_id", how="left")
+    )
+    fct_e["expense_month"] = fct_e["expense_date"].dt.to_period("M").dt.to_timestamp()
+    fct_e["cost_eur"]      = cost_eur(fct_e)
+    fct_e["is_policy_compliant"] = fct_e["policy_compliant"]
+
+    # dim_employees
+    today = pd.Timestamp.today().normalize()
+    dim_emp = employees.merge(
+        companies[["company_id", "company_name", "size_tier", "industry"]], on="company_id", how="left"
+    )
+    dim_emp["tenure_days"] = (today - dim_emp["start_date"]).dt.days
+
+    # dim_companies
+    dim_co = companies.copy()
+    dim_co["contract_age_days"] = (today - dim_co["contract_start"]).dt.days
+    dim_co["mrr_tier"] = pd.cut(
+        dim_co["monthly_mrr_eur"],
+        bins=[0, 999, 4999, 19999, float("inf")],
+        labels=["Low (<1k)", "Mid (1k-5k)", "High (5k-20k)", "Premium (20k+)"]
+    ).astype(str)
+
+    # write to DuckDB
+    con = duckdb.connect(db_path)
+    con.execute("CREATE SCHEMA IF NOT EXISTS main_marts")
+    for name, df in [
+        ("fct_bookings",  fct_b),
+        ("fct_expenses",  fct_e),
+        ("dim_employees", dim_emp),
+        ("dim_companies", dim_co),
+    ]:
+        con.execute(f"DROP TABLE IF EXISTS main_marts.{name}")
+        con.execute(f"CREATE TABLE main_marts.{name} AS SELECT * FROM df")
+    con.close()
 
 # ---------------------------------------------------------------------------
 # Page setup
@@ -84,11 +266,8 @@ st.markdown(f"""
 @st.cache_resource
 def get_connection():
     if not Path(_DB_PATH).exists():
-        st.error(
-            f"DuckDB file not found at `{_DB_PATH}`. "
-            "Please run `dbt run` first to populate the mart tables."
-        )
-        st.stop()
+        with st.spinner("Setting up data for first run..."):
+            _build_fallback_db(_DB_PATH)
     return duckdb.connect(_DB_PATH, read_only=True)
 
 
