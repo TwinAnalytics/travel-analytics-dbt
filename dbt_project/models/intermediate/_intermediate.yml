@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: int_bookings_enriched
+    description: >
+      Enriched bookings model joining booking events with employee and company dimensions.
+      Contains derived fields: booking_month, is_cancelled, cost_eur (FX-converted).
+      This is an intermediate model — not intended for direct consumption by end users.
+    columns:
+      - name: booking_id
+        description: Unique booking identifier (inherited from stg_bookings).
+        tests:
+          - unique
+          - not_null
+      - name: employee_id
+        description: Employee who made the booking.
+        tests:
+          - not_null
+      - name: company_id
+        description: Company the booking belongs to.
+        tests:
+          - not_null
+      - name: booking_month
+        description: First day of the month in which the booking was made (for time-series).
+        tests:
+          - not_null
+      - name: is_cancelled
+        description: True if the booking status is cancelled.
+        tests:
+          - not_null
+      - name: cost_eur
+        description: Booking cost converted to EUR using fixed FX rates.
+        tests:
+          - not_null
+
+  - name: int_expenses_enriched
+    description: >
+      Enriched expenses model joining expense submissions with employee and company dimensions.
+      Contains derived fields: expense_month, cost_eur (FX-converted).
+    columns:
+      - name: expense_id
+        description: Unique expense identifier (inherited from stg_expenses).
+        tests:
+          - unique
+          - not_null
+      - name: employee_id
+        description: Employee who submitted the expense.
+        tests:
+          - not_null
+      - name: company_id
+        description: Company the expense belongs to.
+        tests:
+          - not_null
+      - name: expense_month
+        description: First day of the month in which the expense was incurred.
+        tests:
+          - not_null
+      - name: cost_eur
+        description: Expense cost converted to EUR using fixed FX rates.
+        tests:
+          - not_null

@@ -1,0 +1,46 @@
+# DuckDB database files
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# dbt
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
+
+# Generated data (reproducible via generate_data.py)
+data/*.csv
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Streamlit
+.streamlit/
+
+# Environment
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,98 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Raw CSV data loaded into DuckDB via external file reads.
+      Represents the landing zone for Perk's travel & expense platform data.
+    schema: main
+    tables:
+      - name: raw_bookings
+        description: Raw travel bookings from the Perk platform (flights, hotels, trains, cars).
+        columns:
+          - name: booking_id
+            description: Unique identifier for each booking.
+          - name: employee_id
+            description: Reference to the employee who made the booking.
+          - name: company_id
+            description: Reference to the company the employee belongs to.
+          - name: booking_date
+            description: Date the booking was made.
+          - name: travel_date
+            description: Date of travel / check-in.
+          - name: destination_city
+            description: Destination city name.
+          - name: destination_country
+            description: Destination country name.
+          - name: trip_type
+            description: Type of travel booking (flight, hotel, train, car).
+          - name: amount_cents
+            description: Booking amount in cents (smallest currency unit).
+          - name: currency
+            description: ISO 4217 currency code.
+          - name: status
+            description: Booking status (confirmed, cancelled, pending).
+          - name: advance_days
+            description: Days between booking date and travel date.
+          - name: policy_compliant
+            description: Whether the booking complies with company travel policy.
+
+      - name: raw_expenses
+        description: Raw employee expense submissions.
+        columns:
+          - name: expense_id
+            description: Unique identifier for each expense.
+          - name: employee_id
+            description: Reference to the employee who submitted the expense.
+          - name: company_id
+            description: Reference to the company the employee belongs to.
+          - name: expense_date
+            description: Date the expense was incurred.
+          - name: category
+            description: Expense category (meals, transport, accommodation, entertainment, other).
+          - name: amount_cents
+            description: Expense amount in cents.
+          - name: currency
+            description: ISO 4217 currency code.
+          - name: status
+            description: Expense approval status (approved, rejected, pending).
+          - name: receipt_attached
+            description: Whether a receipt was attached to the expense.
+          - name: policy_compliant
+            description: Whether the expense complies with company policy.
+
+      - name: raw_employees
+        description: Employee master data.
+        columns:
+          - name: employee_id
+            description: Unique identifier for each employee.
+          - name: company_id
+            description: Reference to the employee's company.
+          - name: department
+            description: Department the employee belongs to.
+          - name: seniority
+            description: Seniority level (junior, mid, senior, manager, director).
+          - name: country
+            description: Country where the employee is based.
+          - name: start_date
+            description: Employee start date at the company.
+          - name: is_active
+            description: Whether the employee is currently active.
+
+      - name: raw_companies
+        description: Company / customer master data.
+        columns:
+          - name: company_id
+            description: Unique identifier for each company.
+          - name: company_name
+            description: Legal company name.
+          - name: industry
+            description: Industry vertical.
+          - name: size_tier
+            description: Company size classification (SMB, Mid-Market, Enterprise).
+          - name: country
+            description: Country of the company's headquarters.
+          - name: contract_start
+            description: Date the company started their Perk contract.
+          - name: monthly_mrr_eur
+            description: Monthly Recurring Revenue in EUR.

@@ -1,0 +1,186 @@
+version: 2
+
+models:
+  - name: stg_bookings
+    description: >
+      Staging model for travel bookings. One row per booking event on the Perk platform.
+      Covers flights, hotels, trains, and car rentals.
+    columns:
+      - name: booking_id
+        description: Unique identifier for each booking.
+        tests:
+          - unique
+          - not_null
+      - name: employee_id
+        description: Foreign key to the employee who made the booking.
+        tests:
+          - not_null
+      - name: company_id
+        description: Foreign key to the company.
+        tests:
+          - not_null
+      - name: booking_date
+        description: Date the booking was made.
+        tests:
+          - not_null
+      - name: travel_date
+        description: Date of travel or check-in.
+        tests:
+          - not_null
+      - name: trip_type
+        description: Type of travel booking.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['flight', 'hotel', 'train', 'car']
+      - name: amount_cents
+        description: Booking amount in smallest currency unit (cents).
+        tests:
+          - not_null
+      - name: currency
+        description: ISO 4217 currency code.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['EUR', 'USD', 'GBP']
+      - name: status
+        description: Current booking status.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['confirmed', 'cancelled', 'pending']
+      - name: advance_days
+        description: Days between booking and travel date.
+        tests:
+          - not_null
+      - name: policy_compliant
+        description: Whether the booking follows company travel policy.
+        tests:
+          - not_null
+
+  - name: stg_expenses
+    description: >
+      Staging model for employee expense submissions.
+      One row per expense claim submitted through the Perk platform.
+    columns:
+      - name: expense_id
+        description: Unique identifier for each expense.
+        tests:
+          - unique
+          - not_null
+      - name: employee_id
+        description: Foreign key to the employee.
+        tests:
+          - not_null
+      - name: company_id
+        description: Foreign key to the company.
+        tests:
+          - not_null
+      - name: expense_date
+        description: Date the expense was incurred.
+        tests:
+          - not_null
+      - name: category
+        description: Expense category.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['meals', 'transport', 'accommodation', 'entertainment', 'other']
+      - name: amount_cents
+        description: Expense amount in cents.
+        tests:
+          - not_null
+      - name: currency
+        description: ISO 4217 currency code.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['EUR', 'USD', 'GBP']
+      - name: status
+        description: Approval status.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['approved', 'rejected', 'pending']
+      - name: receipt_attached
+        description: Whether a receipt was provided.
+        tests:
+          - not_null
+      - name: policy_compliant
+        description: Whether the expense follows company policy.
+        tests:
+          - not_null
+
+  - name: stg_employees
+    description: >
+      Staging model for employee master data.
+      One row per employee across all customer companies.
+    columns:
+      - name: employee_id
+        description: Unique identifier for each employee.
+        tests:
+          - unique
+          - not_null
+      - name: company_id
+        description: Foreign key to the company.
+        tests:
+          - not_null
+      - name: department
+        description: Employee department.
+        tests:
+          - not_null
+      - name: seniority
+        description: Employee seniority level.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['junior', 'mid', 'senior', 'manager', 'director']
+      - name: country
+        description: Country where the employee is based.
+        tests:
+          - not_null
+      - name: start_date
+        description: Date the employee joined the company.
+        tests:
+          - not_null
+      - name: is_active
+        description: Whether the employee is currently active.
+        tests:
+          - not_null
+
+  - name: stg_companies
+    description: >
+      Staging model for company / customer master data.
+      One row per company using the Perk platform.
+    columns:
+      - name: company_id
+        description: Unique identifier for each company.
+        tests:
+          - unique
+          - not_null
+      - name: company_name
+        description: Legal company name.
+        tests:
+          - not_null
+      - name: industry
+        description: Industry vertical.
+        tests:
+          - not_null
+      - name: size_tier
+        description: Company size classification.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['SMB', 'Mid-Market', 'Enterprise']
+      - name: country
+        description: Country of headquarters.
+        tests:
+          - not_null
+      - name: contract_start
+        description: Contract start date.
+        tests:
+          - not_null
+      - name: monthly_mrr_eur
+        description: Monthly Recurring Revenue in EUR.
+        tests:
+          - not_null

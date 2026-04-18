@@ -1,0 +1,194 @@
+version: 2
+
+models:
+  - name: fct_bookings
+    description: >
+      Core fact table for travel bookings. Grain: one row per booking.
+      Materialized as a table for query performance. Contains all booking attributes
+      enriched with employee and company context, plus derived fields for analytics.
+    columns:
+      - name: booking_id
+        description: Unique booking identifier.
+        tests:
+          - unique
+          - not_null
+      - name: employee_id
+        description: Foreign key to dim_employees.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_employees')
+              field: employee_id
+      - name: company_id
+        description: Foreign key to dim_companies.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_companies')
+              field: company_id
+      - name: booking_month
+        description: Month of the booking (truncated to first of month).
+        tests:
+          - not_null
+      - name: trip_type
+        description: Type of travel booking.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['flight', 'hotel', 'train', 'car']
+      - name: status
+        description: Booking status.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['confirmed', 'cancelled', 'pending']
+      - name: currency
+        description: Original currency of the booking.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['EUR', 'USD', 'GBP']
+      - name: cost_eur
+        description: Booking cost converted to EUR.
+        tests:
+          - not_null
+      - name: is_policy_compliant
+        description: Whether the booking complies with company travel policy.
+        tests:
+          - not_null
+      - name: is_cancelled
+        description: True if the booking was cancelled.
+        tests:
+          - not_null
+      - name: advance_booking_tier
+        description: Classification based on how far in advance the booking was made.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['last_minute', 'standard', 'advance']
+
+  - name: fct_expenses
+    description: >
+      Core fact table for expense submissions. Grain: one row per expense.
+      Contains all expense attributes enriched with employee and company context.
+    columns:
+      - name: expense_id
+        description: Unique expense identifier.
+        tests:
+          - unique
+          - not_null
+      - name: employee_id
+        description: Foreign key to dim_employees.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_employees')
+              field: employee_id
+      - name: company_id
+        description: Foreign key to dim_companies.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_companies')
+              field: company_id
+      - name: expense_month
+        description: Month of the expense (truncated to first of month).
+        tests:
+          - not_null
+      - name: category
+        description: Expense category.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['meals', 'transport', 'accommodation', 'entertainment', 'other']
+      - name: status
+        description: Approval status.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['approved', 'rejected', 'pending']
+      - name: currency
+        description: Original currency.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['EUR', 'USD', 'GBP']
+      - name: cost_eur
+        description: Expense cost converted to EUR.
+        tests:
+          - not_null
+      - name: is_policy_compliant
+        description: Whether the expense complies with company policy.
+        tests:
+          - not_null
+      - name: receipt_attached
+        description: Whether a receipt was attached to the submission.
+        tests:
+          - not_null
+
+  - name: dim_employees
+    description: >
+      Employee dimension (SCD Type 0). Grain: one row per employee.
+      Includes company context (denormalised) and derived tenure_days metric.
+    columns:
+      - name: employee_id
+        description: Unique employee identifier.
+        tests:
+          - unique
+          - not_null
+      - name: company_id
+        description: Foreign key to dim_companies.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_companies')
+              field: company_id
+      - name: department
+        description: Employee department.
+        tests:
+          - not_null
+      - name: seniority
+        description: Seniority level.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['junior', 'mid', 'senior', 'manager', 'director']
+      - name: is_active
+        description: Whether the employee is currently active.
+        tests:
+          - not_null
+      - name: tenure_days
+        description: Number of days since the employee's start date.
+        tests:
+          - not_null
+
+  - name: dim_companies
+    description: >
+      Company / customer dimension. Grain: one row per company.
+      Includes derived fields: contract_age_days and mrr_tier.
+    columns:
+      - name: company_id
+        description: Unique company identifier.
+        tests:
+          - unique
+          - not_null
+      - name: size_tier
+        description: Company size classification.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['SMB', 'Mid-Market', 'Enterprise']
+      - name: monthly_mrr_eur
+        description: Monthly Recurring Revenue in EUR.
+        tests:
+          - not_null
+      - name: mrr_tier
+        description: Bucketed MRR classification.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Low (<1k)', 'Mid (1k-5k)', 'High (5k-20k)', 'Premium (20k+)']
+      - name: contract_age_days
+        description: Number of days since the contract started.
+        tests:
+          - not_null

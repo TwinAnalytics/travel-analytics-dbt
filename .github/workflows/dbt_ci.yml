@@ -1,0 +1,76 @@
+name: dbt CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  DBT_PROFILES_DIR: ${{ github.workspace }}/dbt_project
+  PERK_DATA_DIR: ${{ github.workspace }}/data
+
+jobs:
+  dbt-pipeline:
+    name: Run dbt Pipeline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate synthetic data
+        run: |
+          python data/generate_data.py
+
+      - name: Install dbt packages
+        working-directory: dbt_project
+        run: dbt deps --profiles-dir .
+
+      - name: Run dbt models
+        working-directory: dbt_project
+        env:
+          PERK_DATA_DIR: ${{ github.workspace }}/data
+        run: dbt run --profiles-dir .
+
+      - name: Run dbt tests
+        working-directory: dbt_project
+        env:
+          PERK_DATA_DIR: ${{ github.workspace }}/data
+        run: dbt test --profiles-dir .
+
+      - name: Generate dbt docs
+        working-directory: dbt_project
+        env:
+          PERK_DATA_DIR: ${{ github.workspace }}/data
+        run: dbt docs generate --profiles-dir .
+
+      - name: Upload dbt artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dbt-artifacts
+          path: |
+            dbt_project/target/manifest.json
+            dbt_project/target/run_results.json
+            dbt_project/target/catalog.json
+          retention-days: 14
+
+      - name: Upload test results on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: dbt-test-failures
+          path: dbt_project/target/run_results.json
+          retention-days: 7
