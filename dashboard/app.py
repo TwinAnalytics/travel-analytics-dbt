@@ -1,11 +1,11 @@
 """
-Perk Analytics Dashboard
+Travel Analytics Dashboard
 ========================
 Professional Streamlit dashboard visualising travel & spend analytics
 from the dbt marts layer (DuckDB backend).
 
 Brand colours:
-  - Perk Teal / Blue:  #0066CC
+  - Brand Blue:  #0066CC
   - Dark Navy:         #1A1A2E
   - Accent Green:      #00C896
   - Light Grey:        #F5F7FA
@@ -225,7 +225,7 @@ def _build_fallback_db(db_path: str) -> None:
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Perk Analytics",
+    page_title="Travel Analytics",
     page_icon="✈️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -304,7 +304,7 @@ def pct(value: float) -> str:
 with st.sidebar:
     st.markdown(f"""
     <div style='text-align:center; padding: 20px 0;'>
-        <h2 style='color:white; font-size:1.4rem; margin:0;'>✈️ Perk Analytics</h2>
+        <h2 style='color:white; font-size:1.4rem; margin:0;'>✈️ Travel Analytics</h2>
         <p style='color:#8899BB; font-size:0.8rem; margin:4px 0 0 0;'>Travel & Spend Intelligence</p>
     </div>
     """, unsafe_allow_html=True)
@@ -352,7 +352,7 @@ for col in ["expense_date", "expense_month"]:
 
 if page == "Executive Overview":
     st.title("Executive Overview")
-    st.markdown("High-level KPIs and business health metrics across the Perk platform.")
+    st.markdown("High-level KPIs and business health metrics across the platform.")
 
     # --- KPI Cards ---
     total_bookings    = len(fct_bookings)
